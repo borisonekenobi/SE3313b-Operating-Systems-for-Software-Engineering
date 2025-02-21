@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# IDE Files
+/.idea/
+/.vscode/
+
+# Data Files
+*.csv
+*.db
