@@ -14,7 +14,11 @@
 #define IN_PIPE 1
 #define OUT_PIPE 2
 
+#define CHECKMARK "\u001b[32m✓\u001b[37m"
+
 using namespace std;
+
+map<string, tuple<pid_t, int, int>> children;
 
 // Function to execute a query and return results
 vector<vector<string>> executeQuery(sqlite3* db, const string& query)
@@ -54,6 +58,31 @@ vector<vector<string>> query(const string& query)
     sqlite3_close(db);
 
     return query_results;
+}
+
+void closePipe(const int pipe)
+{
+    close(pipe);
+}
+
+void killChildrenWithPipes()
+{
+    cout << "Killing child processes..." << endl;
+    for (const auto& child : children)
+    {
+        kill(get<PID>(child.second), SIGKILL);
+        closePipe(get<IN_PIPE>(child.second));
+        closePipe(get<OUT_PIPE>(child.second));
+        cout << "\tChild process for " << child.first << " " << CHECKMARK << endl;
+    }
+    cout << "All child processes killed." << endl;
+}
+
+void endCode(const int& status)
+{
+    killChildrenWithPipes();
+    cout << endl << "Press ENTER to exit" << endl;
+    exit(status);
 }
 
 void writeCityToChild(const string& data, const tuple<pid_t, int, int>& child_info)
@@ -97,7 +126,7 @@ void* childThread(void* args)
     if (!file.is_open())
     {
         cerr << "Failed to create file!" << endl;
-        exit(-1);
+        exit(EXIT_FAILURE);
     }
     file.close();
 
@@ -107,7 +136,7 @@ void* childThread(void* args)
         if (!file.is_open())
         {
             cerr << "Failed to create file!" << endl;
-            exit(-1);
+            exit(EXIT_FAILURE);
         }
 
         file << row[0] << " : " << row[1] << endl;
@@ -116,6 +145,7 @@ void* childThread(void* args)
         usleep(sleep_duration_μs);
     }
 
+    cout << endl << endl << "Child thread for " << city << " finished." << endl;
     exit(EXIT_SUCCESS);
 }
 
@@ -153,7 +183,7 @@ tuple<pid_t, int, int> createChildProcess()
     if (pipe(pipefd) == -1)
     {
         perror("pipe");
-        exit(EXIT_FAILURE);
+        endCode(EXIT_FAILURE);
     }
     const int in_pipe = pipefd[0];
     const int out_pipe = pipefd[1];
@@ -161,28 +191,13 @@ tuple<pid_t, int, int> createChildProcess()
     const pid_t pid = fork();
 
     // Fork failed
-    if (pid < 0) exit(EXIT_FAILURE);
+    if (pid < 0) endCode(EXIT_FAILURE);
     // Parent process
     if (pid > 0) return make_tuple(pid, in_pipe, out_pipe);
 
     // Child process
     childProcess(in_pipe);
     exit(EXIT_SUCCESS);
-}
-
-void closePipe(const tuple<pid_t, int, int>& child)
-{
-    close(get<IN_PIPE>(child));
-    close(get<OUT_PIPE>(child));
-}
-
-void killChildrenWithPipes(const map<string, tuple<pid_t, int, int>>& children)
-{
-    for (const auto& child : children)
-    {
-        kill(get<PID>(child.second), SIGKILL);
-        closePipe(child.second);
-    }
 }
 
 void* parentThread(void* args)
@@ -193,21 +208,16 @@ void* parentThread(void* args)
     if (waitpid(pid, &status, 0) == -1)
     {
         perror("waitpid");
-        exit(EXIT_FAILURE);
+        endCode(EXIT_FAILURE);
     }
 
     if (WIFEXITED(status))
     {
         if (WEXITSTATUS(status) == 0)
         {
-            cout << endl << "Child process exited successfully." << endl;
-            exit(EXIT_SUCCESS);
+            endCode(EXIT_SUCCESS);
         }
         cout << "Child process exited with status " << WEXITSTATUS(status) << endl;
-    }
-    else if (WIFSIGNALED(status))
-    {
-        cout << "Child process was killed by signal " << WTERMSIG(status) << endl;
     }
 
     return nullptr;
@@ -215,8 +225,6 @@ void* parentThread(void* args)
 
 int main()
 {
-    map<string, tuple<pid_t, int, int>> children;
-
     while (true)
     {
         string city;
@@ -289,13 +297,12 @@ int main()
             if (pthread_create(&thread, nullptr, parentThread, &get<PID>(child)))
             {
                 cerr << "Error creating thread." << endl;
-                exit(EXIT_FAILURE);
+                endCode(EXIT_FAILURE);
             }
         }
 
         writeCityToChild(city_id, children.at(country));
     }
 
-    killChildrenWithPipes(children);
-    exit(EXIT_SUCCESS);
+    endCode(EXIT_SUCCESS);
 }
