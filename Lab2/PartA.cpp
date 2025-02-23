@@ -113,7 +113,7 @@ void* childThread(void* args)
         file << row[0] << " : " << row[1] << endl;
         file.close();
 
-         usleep(sleep_duration_μs);
+        usleep(sleep_duration_μs);
     }
 
     exit(EXIT_SUCCESS);
