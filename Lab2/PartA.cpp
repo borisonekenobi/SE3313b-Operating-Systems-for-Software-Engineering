@@ -3,32 +3,18 @@
 #include <map>
 #include <set>
 #include <string>
-#include "sqlite3.h"
+#include <unistd.h>
+#include <vector>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include <unistd.h>
+#include "sqlite3.h"
 #include "utils.h"
-#include <vector>
 
 #define PID 0
 #define IN_PIPE 1
 #define OUT_PIPE 2
 
 using namespace std;
-
-void printVector(const vector<vector<string>>& data)
-{
-    for (const auto& row : data)
-    {
-        // Iterate through each row
-        for (const auto& col : row)
-        {
-            // Iterate through each column
-            cout << col << " "; // Print element with a space
-        }
-        cout << endl; // New line after each row
-    }
-}
 
 // Function to execute a query and return results
 vector<vector<string>> executeQuery(sqlite3* db, const string& query)
