@@ -86,9 +86,6 @@ void addTempToAverage(const string& date, const string& temperature)
     while (it != averageTemperatures.begin())
     {
         --it;
-        cout << "Date: " << get<DATE>(*it) << ", Temperature: " << get<TEMP_SUM>(*it) << ", Count: " <<
-            get<COUNT>(*it) << ", Average Temp: " <<
-            get<TEMP_SUM>(*it) / static_cast<float>(get<COUNT>(*it)) << endl;
         if (date == get<DATE>(*it))
         {
             found = true;
@@ -142,7 +139,7 @@ start:
     getline(cin, country);
     trim(country);
 
-    const auto query_results = query(
+    auto query_results = query(
         "SELECT id, city, country "
         "FROM cities "
         "WHERE country='" + country + "' "
@@ -155,20 +152,18 @@ start:
         goto start;
     }
 
+    cout << endl;
+
     for (auto& row : query_results)
     {
         cout << "Starting thread for city: " << row[1] << ", " << row[2] << " ";
-        string city_id = row[0];
         pthread_t thread;
-        if (pthread_create(&thread, nullptr, cityThread, &city_id))
+        if (pthread_create(&thread, nullptr, cityThread, &row[0]))
         {
             cerr << "Error creating thread." << endl;
             return EXIT_FAILURE;
         }
         cout << CHECKMARK << endl;
-
-        // TODO: Remove this sleep?
-        usleep(100 * 1000); // 100ms
     }
 
     while (true)
