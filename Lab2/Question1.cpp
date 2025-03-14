@@ -294,11 +294,13 @@ int main()
             tuple<pid_t, int, int> child = createChildProcess();
             children.insert({country, child});
             pthread_t thread;
+            cout << "Starting child process for " << country << " ";
             if (pthread_create(&thread, nullptr, parentThread, &get<PID>(child)))
             {
                 cerr << "Error creating thread." << endl;
                 endCode(EXIT_FAILURE);
             }
+            cout << CHECKMARK << endl;
         }
 
         writeCityToChild(city_id, children.at(country));
