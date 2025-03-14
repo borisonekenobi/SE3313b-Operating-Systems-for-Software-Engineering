@@ -50,3 +50,7 @@ bvasilev-lab1
 ### Run
 
 Compile `Question3.cpp`, run the file, and follow the instructions on screen. A new file will be created for the country you enter.
+
+### Example Output
+
+![img.png](q3.png)
